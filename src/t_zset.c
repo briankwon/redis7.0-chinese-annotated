@@ -78,6 +78,23 @@ int zslLexValueLteMax(sds value, zlexrangespec *spec);
 /* Create a skiplist node with the specified number of levels.
  * The SDS string 'ele' is referenced by the node after the call. */
 
+void zslPrintNodeLevels(zskiplistNode *node, int maxLevel) {
+    if (node == NULL) {
+        printf("Node is NULL\n");
+        return;
+    }
+
+    printf("Node (ele: %s, score: %f):\n", node->ele, node->score);
+    for (int i = 0; i < maxLevel; i++) {
+        if (node->level[i].forward) {
+            printf("  Level %d: forward to (ele: %s, score: %f), span: %lu\n",
+                   i, node->level[i].forward->ele, node->level[i].forward->score, node->level[i].span);
+        } else {
+            printf("  Level %d: forward to NULL, span: %lu\n", i, node->level[i].span);
+        }
+    }
+}
+
 /* 创建一个具有指定层数的跳表节点, SDS字符串 'ele' 在调用后被节点引用 */
 zskiplistNode *zslCreateNode(int level, double score, sds ele) {
     zskiplistNode *zn =
@@ -160,6 +177,29 @@ int zslRandomLevel(void) {
     return (level<ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;
 }
 
+void zslPrint(zskiplist *zsl) {
+    printf("Skiplist structure:\n");
+    for (int i = zsl->level - 1; i >= 0; i--) {
+        zskiplistNode *node = zsl->header;
+        printf("Level %d:\n", i);
+        while (node) {
+            if (node->ele) {
+                printf("  Node (ele: %s, score: %f, backward: %s)\n",
+                       node->ele, node->score,
+                       node->backward ? node->backward->ele : "NULL");
+            } else {
+                printf("  Header\n");
+            }
+            node = node->level[i].forward;
+
+//            zslPrintNodeLevels(node, 3);
+        }
+        printf("\n");
+    }
+}
+
+
+
 /* Insert a new node in the skiplist. Assumes the element does not already
  * exist (up to the caller to enforce that). The skiplist takes ownership
  * of the passed SDS string 'ele'. */
@@ -174,6 +214,7 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, sds ele) {
     serverAssert(!isnan(score));
     x = zsl->header;
 
+    zslPrint(zsl);
     /* 从最高层向下查找插入位置 */
     for (i = zsl->level-1; i >= 0; i--) {
         /* store rank that is crossed to reach the insert position */
@@ -185,6 +226,9 @@ zskiplistNode *zslInsert(zskiplist *zsl, double score, sds ele) {
                     (x->level[i].forward->score == score &&
                     sdscmp(x->level[i].forward->ele,ele) < 0)))
         {
+            /* 这里的rank[i]指的是在每一层从头节点到update[i]需要经过的span */
+            /* 新节点根据随机level的不同可能要插入到多个level中，此时在每一层的插入位置update[i]需要计算对应的span */
+            /* https://jothipn.github.io/2023/04/07/redis-sorted-set.html#skiplist */
             rank[i] += x->level[i].span;
             x = x->level[i].forward;
         }

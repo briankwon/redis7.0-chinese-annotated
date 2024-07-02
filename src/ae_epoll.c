@@ -118,6 +118,9 @@ static int aeApiPoll(aeEventLoop *eventLoop, struct timeval *tvp) {
         numevents = retval;
         for (j = 0; j < numevents; j++) {
             int mask = 0;
+            /*
+             * 获取第j个event的指针，这里不是数字相加的意思
+             */
             struct epoll_event *e = state->events+j;
 
             if (e->events & EPOLLIN) mask |= AE_READABLE;

@@ -178,7 +178,7 @@ int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
     }
     /* 获取 events 数组中 fd 位置的指针 */
     aeFileEvent *fe = &eventLoop->events[fd];
-    /* 添加对应多路复用的数据 */
+    /* 添加对应多路复用的数据，linux——epoll，macos——kqueue */
     if (aeApiAddEvent(eventLoop, fd, mask) == -1)
         return AE_ERR;
     fe->mask |= mask;
