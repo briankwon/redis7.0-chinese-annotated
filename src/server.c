@@ -3368,6 +3368,7 @@ void call(client *c, int flags) {
         monotonic_start = getMonotonicUs();
 
     server.in_nested_call++;
+    // 执行命令，命令实现会调用addReply将结果写入client的输出缓冲区
     c->cmd->proc(c);
     server.in_nested_call--;
 
@@ -3999,9 +4000,11 @@ int processCommand(client *c) {
         c->cmd->proc != quitCommand &&
         c->cmd->proc != resetCommand)
     {
+        // 这里是执行redis事务
         queueMultiCommand(c, cmd_flags);
         addReply(c,shared.queued);
     } else {
+        // 这里是执行单条命令
         call(c,CMD_CALL_FULL);
         c->woff = server.master_repl_offset;
         if (listLength(server.ready_keys))

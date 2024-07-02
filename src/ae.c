@@ -470,6 +470,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
             eventLoop->aftersleep(eventLoop);
         /* 遍历所有就绪事件 */
         for (j = 0; j < numevents; j++) {
+            /* 就绪的文件描述符，j其实没有任何意义，只是个下标而已 */
             int fd = eventLoop->fired[j].fd;
             /* 获取指定事件 */
             aeFileEvent *fe = &eventLoop->events[fd];

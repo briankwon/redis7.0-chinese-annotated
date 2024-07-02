@@ -334,6 +334,7 @@ int prepareClientToWrite(client *c) {
      */
     /* 这里是该方法关键的逻辑
      * 判断客户端没有待回复的数据，且 IO 线程处于空闲状态，将客户端放入待执行写客户端列表 */
+    /* 意思就是没有数据要写给客户端了，那么把客户端放到一个列表，这列表里的客户端会写数据到socket */
     if (!clientHasPendingReplies(c) && io_threads_op == IO_THREADS_OP_IDLE)
         putClientInPendingWriteQueue(c);
 
@@ -4202,6 +4203,7 @@ int io_threads_op;      /* IO_THREADS_OP_IDLE, IO_THREADS_OP_READ or IO_THREADS_
  * used. We spawn io_threads_num-1 threads, since one is the main thread
  * itself. */
 /* 每一个 IO 线程需要处理的客户端列表数组 */
+/* 下标为线程ID，从0开始 */
 list *io_threads_list[IO_THREADS_MAX_NUM];
 
 /* 获取给定位置的 IO 线程待处理的客户端数量 */
@@ -4231,6 +4233,7 @@ void *IOThreadMain(void *myid) {
     while(1) {
         /* Wait for start */
         /* 做一个阻塞操作，使用 sleep 不好把控时间，直接用循环，有点耗 cpu */
+        // 当有事件了了就break了
         for (int j = 0; j < 1000000; j++) {
             if (getIOPendingCount(id) != 0) break;
         }
@@ -4562,7 +4565,7 @@ int handleClientsWithPendingReadsUsingThreads(void) {
     int item_id = 0;
     while((ln = listNext(&li))) {
         client *c = listNodeValue(ln);
-        /* 这里把需要处理 client 轮询分配给每个 IO 线程 */
+        /* 这里把需要处理 client 轮询分配给每个 IO 线程，注意这里包括了主线程 */
         int target_id = item_id % server.io_threads_num;
         /* 加入到对应线程的需要处理的客户端列表中 */
         listAddNodeTail(io_threads_list[target_id],c);
@@ -4572,8 +4575,10 @@ int handleClientsWithPendingReadsUsingThreads(void) {
     /* Give the start condition to the waiting threads, by setting the
      * start condition atomic var. */
     /* 将线程设置成在处理读事件的状态 */
+    // 因此在readQueryFromClient的postponeClientRead方法会直接返回
     io_threads_op = IO_THREADS_OP_READ;
     /* 更新每个线程待处理的客户端的数量 */
+    /* 从1开始是因为0为主线程，下面这个操作主线程不需要执行，因此要跳过 */
     for (int j = 1; j < server.io_threads_num; j++) {
         int count = listLength(io_threads_list[j]);
         setIOPendingCount(j, count);
@@ -4594,6 +4599,7 @@ int handleClientsWithPendingReadsUsingThreads(void) {
 
     /* Wait for all the other threads to end their work. */
     /* 等待其他线程处理完自己的客户端事件 */
+    // 每个IO线程在初始化时都注册了IOThreadMain函数，所以这里等待就可以了
     while(1) {
         unsigned long pending = 0;
         for (int j = 1; j < server.io_threads_num; j++)

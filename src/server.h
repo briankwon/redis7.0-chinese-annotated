@@ -1518,8 +1518,8 @@ struct redisServer {
     socketFds cfd;              /* Cluster bus listening socket */
     list *clients;              /* List of active clients */
     list *clients_to_close;     /* Clients to close asynchronously */
-    list *clients_pending_write; /* There is to write or install handler. */
-    list *clients_pending_read;  /* Client has pending read socket buffers. */
+    list *clients_pending_write; /* There is to write or install handler. 等待写数据到client */
+    list *clients_pending_read;  /* Client has pending read socket buffers. 等待从client读数据，也就是命令command */
     list *slaves, *monitors;    /* List of slaves and MONITORs */
     client *current_client;     /* Current client executing the command. */
 
