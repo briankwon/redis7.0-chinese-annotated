@@ -361,7 +361,7 @@ static int connSocketGetType(connection *conn) {
 }
 
 ConnectionType CT_Socket = {
-    .ae_handler = connSocketEventHandler,
+    .ae_handler = connSocketEventHandler,   // 当有io事件时的handler，实际会调用read/write的handler
     .close = connSocketClose,
     .write = connSocketWrite,
     .writev = connSocketWritev,

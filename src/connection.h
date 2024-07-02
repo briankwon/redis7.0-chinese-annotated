@@ -180,6 +180,7 @@ static inline int connSetWriteHandler(connection *conn, ConnectionCallbackFunc f
  * If NULL, the existing handler is removed.
  */
 static inline int connSetReadHandler(connection *conn, ConnectionCallbackFunc func) {
+    // 参考connection.c的connSocketSetReadHandler方法，这是触发了一次方法调用
     return conn->type->set_read_handler(conn, func);
 }
 

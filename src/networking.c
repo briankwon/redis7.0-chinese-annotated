@@ -138,6 +138,8 @@ client *createClient(connection *conn) {
         if (server.tcpkeepalive)
             connKeepAlive(conn,server.tcpkeepalive);
         /* 向事件循环处理器中添加一个可读的文件事件，读事件回调设置为 readQueryFromClient */
+        // connSetReadHandler方法的第二个参数为函数指针，readQueryFromClient符合该指针指向
+        // 当conn有可读事件时调用readQueryFromClient方法
         connSetReadHandler(conn, readQueryFromClient);
         /* 将连接的私有数据设置为客户端实例 */
         connSetPrivateData(conn, c);
@@ -2700,7 +2702,7 @@ int processInputBuffer(client *c) {
              * execute the command here. All we can do is to flag the client
              * as one that needs to process the command. */
             /* 如果 IO 线程不处于空闲状态，标记客户端有待处理的命令，并退出当前循环
-             * 注：redis 处理命令是使用主线程单线程处理命令，如果这里发现 IO 线程的状态不处于空间状态
+             * 注：redis 处理命令是使用主线程单线程处理命令，如果这里发现 IO 线程的状态不处于空闲状态
              * 表示当前正在使用 IO 多线程做 read 操作，进入该方法的不一定是主线程 */
             if (io_threads_op != IO_THREADS_OP_IDLE) {
                 serverAssert(io_threads_op == IO_THREADS_OP_READ);
@@ -4593,6 +4595,7 @@ int handleClientsWithPendingReadsUsingThreads(void) {
         /* readQueryFromClient 里面有个将连接的客户端放入待处理读客户端列表中，
          * 但是上面的逻辑已经设置了 io_threads_op = IO_THREADS_OP_READ
          * 所以不会将客户端再放入待处理读客户端列表中 */
+        // 这个方法IO线程和主线程都会调用，区别是IO线程只做IO逻辑，而主线程才能执行命令
         readQueryFromClient(c->conn);
     }
     listEmpty(io_threads_list[0]);
@@ -4635,6 +4638,7 @@ int handleClientsWithPendingReadsUsingThreads(void) {
         updateClientMemUsage(c);
 
         /* 这里是客户端命令的处理方法 */
+        // IO线程同步读取的命令，现在交给主线程继续处理
         if (processPendingCommandAndInputBuffer(c) == C_ERR) {
             /* If the client is no longer valid, we avoid
              * processing the client later. So we just go

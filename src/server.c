@@ -1552,6 +1552,7 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
     handleBlockedClientsTimeout();
 
     /* We should handle pending reads clients ASAP after event loop. */
+    // 重点：多线程处理读请求
     handleClientsWithPendingReadsUsingThreads();
 
     /* Handle TLS pending data. (must be done before flushAppendOnlyFile) */
@@ -1633,6 +1634,7 @@ void beforeSleep(struct aeEventLoop *eventLoop) {
         flushAppendOnlyFile(0);
 
     /* Handle writes with pending output buffers. */
+    // 多线程处理写请求
     handleClientsWithPendingWritesUsingThreads();
 
     /* Close clients that need to be closed asynchronous */
@@ -2258,7 +2260,7 @@ int createSocketAcceptHandler(socketFds *sfd, aeFileProc *accept_handler) {
 
     for (j = 0; j < sfd->count; j++) {
         /*
-         * 在初始化客户端时，sfd->fd[j]就是当前监听客户端请求的socket fs，每次有请求时epoll感知到会触发accept_handler
+         * 在初始化客户端时，sfd->fd[j]就是当前监听客户端请求的socket fs，每次有请求时epoll感知到会触发accept_handler，由对应的handler处理accept
          */
         if (aeCreateFileEvent(server.el, sfd->fd[j], AE_READABLE, accept_handler,NULL) == AE_ERR) {
             /* Rollback */
@@ -2622,6 +2624,7 @@ void initServer(void) {
     }
 
     /* 针对前面创建的 TCP，Unix 套接字创建监听事件，并关联相对应的连接应答处理器(handler)，来 accept 客户端的 connect 请求 */
+    // 也就是说，如果这个对外暴露的socket有人连接，那么就使用对应的handler处理这次连接
     /* Create an event handler for accepting new connections in TCP and Unix
      * domain sockets. */
     if (createSocketAcceptHandler(&server.ipfd, acceptTcpHandler) != C_OK) {
