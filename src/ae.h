@@ -136,13 +136,13 @@ typedef struct aeEventLoop {
     int setsize; /* max number of file descriptors tracked */
     /* 用于生成时间事件的 ID */
     long long timeEventNextId;
-    /* 已注册的文件事件，在初始化的时候会初始化 setsize 个位置 */
+    /* 已注册的文件事件，在初始化的时候会初始化 setsize 个位置，下标会使用文件描述符fd */
     aeFileEvent *events; /* Registered events */
     /* 已就绪的文件事件 */
     aeFiredEvent *fired; /* Fired events */
     /* 时间事件链表的头节点 */
     aeTimeEvent *timeEventHead;
-    /* 事件处理器的开关 */
+    /* 事件处理器的开关，0为开启*/
     int stop;
     /* 多路复用库的私有数据 */
     void *apidata; /* This is used for polling API specific data */
